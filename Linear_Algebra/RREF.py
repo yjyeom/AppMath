@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
- 2024. 4. 23.
+ 2024. 4. 23. --> 2026.3.19
 @author: user
 """
 
@@ -8,15 +8,30 @@
 from sympy import *
 
 
-print('AppMath 2024 Midterm...')
+print('for AppMath 2026 HW1...')
 
-#==[2] R-REF
-print('==[Prob 2]==')
-A = Matrix([[1, 2, 0, 2, 3], [1, 0, 2, 2, 0],[1, 1, 0, 3, 1],[1, 1, 2, 1, 2]])
+#==[1] R-REF
+print('==[R-REF]==')
+A = Matrix([[1, 1, 0, 2, 3], [1, 0, 2, 2, 0],[1, 1, 0, 3, 1],[1, 1, 2, 1, 2]])
+print('A =', A)
 print('R-REF(A) =', A.rref())
 
 #- 문제용 RHS b-vec 만들기
-xc = Matrix([[-2,-1,0,1,2]]).T
+xc = Matrix([[2,-1,0,1,2]]).T
+b = A*xc
+print('b=',b)
+
+x1, x2, x3, x4, x5 = symbols('x1, x2, x3, x4, x5')
+print(linsolve((A, b), (x1, x2, x3, x4,x5)))
+
+#==[2] R-REF
+print('==[R-REF]==')
+A = Matrix([[1, 1, 0, 1, 1], [1, 0, 1, 2, 0],[1, 1, 0, 3, 1],[1, 0, 1, 0, 0]])
+print('A =', A)
+print('R-REF(A) =', A.rref())
+
+#- 문제용 RHS b-vec 만들기
+xc = Matrix([[1,2,1,-1,0]]).T
 b = A*xc
 print('b=',b)
 
@@ -24,6 +39,22 @@ x1, x2, x3, x4, x5 = symbols('x1, x2, x3, x4, x5')
 print(linsolve((A, b), (x1, x2, x3, x4,x5)))
 
 
+#==[3] R-REF
+print('==[R-REF]==')
+A = Matrix([[1, 1, 0, 1, 1], [1, 0, 1, 0, 1],[1, 1, 1, 0, 1]])
+print('A =', A)
+print('R-REF(A) =', A.rref())
+
+#- 문제용 RHS b-vec 만들기
+xc = Matrix([[1,1,-1,-1,1]]).T
+b = A*xc
+print('b=',b)
+
+x1, x2, x3, x4, x5 = symbols('x1, x2, x3, x4, x5')
+print(linsolve((A, b), (x1, x2, x3, x4,x5)))
+
+
+'''
 #==[3] Projection5
 print('\n==[Prob 3]==')
 b1 = Matrix([ [1], [1], [1] ])
@@ -42,7 +73,7 @@ coord = BTB.inv()*B.T*v
 print('P =', P)
 print('Pv =', Pv)
 print('[alpha, beta] =', coord)
-
+'''
 
 
 
