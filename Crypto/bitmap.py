@@ -13,13 +13,16 @@ def create_bitmap(width, height, data, filename):
         data: List or bytes of binary values (0 or 1)
         filename: Output bitmap file path
     """
-    # BMP header
-    file_size = 54 + (width * height // 8)
+    row_bytes = (width + 7) // 8
+    padded_row_bytes = ((row_bytes + 3) // 4) * 4
+    image_size = padded_row_bytes * height
+    data_offset = 14 + 40 + 8  # File header + DIB header + 1bpp palette
+    file_size = data_offset + image_size
     
     bmp_header = b'BM'
     bmp_header += struct.pack('<I', file_size)  # File size
     bmp_header += struct.pack('<I', 0)  # Reserved
-    bmp_header += struct.pack('<I', 54)  # Data offset
+    bmp_header += struct.pack('<I', data_offset)  # Data offset
     
     # DIB header
     dib_header = struct.pack('<I', 40)  # Header size
@@ -28,10 +31,10 @@ def create_bitmap(width, height, data, filename):
     dib_header += struct.pack('<H', 1)  # Planes
     dib_header += struct.pack('<H', 1)  # Bits per pixel
     dib_header += struct.pack('<I', 0)  # Compression
-    dib_header += struct.pack('<I', 0)  # Image size
+    dib_header += struct.pack('<I', image_size)  # Image size
     dib_header += struct.pack('<i', 0)  # X pixels per meter
     dib_header += struct.pack('<i', 0)  # Y pixels per meter
-    dib_header += struct.pack('<I', 0)  # Colors used
+    dib_header += struct.pack('<I', 2)  # Colors used
     dib_header += struct.pack('<I', 0)  # Important colors
     
     # Color palette (black and white)
@@ -40,7 +43,8 @@ def create_bitmap(width, height, data, filename):
     
     # Bitmap data
     bitmap_data = b''
-    for y in range(height):
+    # Write rows bottom-up because BMP with positive height is bottom-up.
+    for y in range(height - 1, -1, -1):
         row = b''
         for x in range(0, width, 8):
             byte = 0
@@ -48,6 +52,8 @@ def create_bitmap(width, height, data, filename):
                 if x + bit < width and data[y * width + x + bit]:
                     byte |= (0x80 >> bit)
             row += bytes([byte])
+        if padded_row_bytes > row_bytes:
+            row += b'\x00' * (padded_row_bytes - row_bytes)
         bitmap_data += row
     
     # Write file
@@ -65,13 +71,16 @@ def create_grayscale_bitmap(width, height, data, filename):
         data: List or bytes of grayscale values (0-255)
         filename: Output bitmap file path
     """
-    # BMP header
-    file_size = 54 + 1024 + (width * height)
+    row_bytes = width
+    padded_row_bytes = ((row_bytes + 3) // 4) * 4
+    image_size = padded_row_bytes * height
+    data_offset = 14 + 40 + 1024
+    file_size = data_offset + image_size
 
     bmp_header = b'BM'
     bmp_header += struct.pack('<I', file_size)
     bmp_header += struct.pack('<I', 0)
-    bmp_header += struct.pack('<I', 1078)  # Data offset (54 + 1024)
+    bmp_header += struct.pack('<I', data_offset)
 
     # DIB header
     dib_header = struct.pack('<I', 40)
@@ -80,7 +89,7 @@ def create_grayscale_bitmap(width, height, data, filename):
     dib_header += struct.pack('<H', 1)
     dib_header += struct.pack('<H', 8)  # 8 bits per pixel
     dib_header += struct.pack('<I', 0)
-    dib_header += struct.pack('<I', 0)
+    dib_header += struct.pack('<I', image_size)
     dib_header += struct.pack('<i', 0)
     dib_header += struct.pack('<i', 0)
     dib_header += struct.pack('<I', 256)  # Colors used
@@ -91,8 +100,16 @@ def create_grayscale_bitmap(width, height, data, filename):
     for i in range(256):
         palette += bytes([i, i, i, 0])
 
-    # Bitmap data
-    bitmap_data = bytes(data)
+    # Bitmap data with 4-byte row alignment written bottom-up
+    bitmap_data = b''
+    for y in range(height - 1, -1, -1):
+        start = y * width
+        row = bytes(data[start:start + width])
+        if len(row) < width:
+            raise ValueError("Not enough pixel data for width*height")
+        if padded_row_bytes > row_bytes:
+            row += b'\x00' * (padded_row_bytes - row_bytes)
+        bitmap_data += row
 
     # Write file
     with open(filename, 'wb') as f:
@@ -114,9 +131,6 @@ def load_and_convert_to_grayscale(image_path, output_path):
     # Get dimensions
     width, height = img.size
     
-    # Flip image vertically
-    img = img.transpose(Image.FLIP_TOP_BOTTOM)
-
     # Convert image data to bytes
     data = list(img.getdata())
     
@@ -189,7 +203,8 @@ if __name__ == '__main__':
 
     os.chdir('d:/salt_data/Salt_Git_2026/AppMath/Crypto')  
 
-    width, height = 32, 32
+    '''
+        width, height = 32, 32
     data = [i % 2 for i in range(width * height)]
     create_bitmap(width, height, data, 'output.bmp')   
     print("Bitmap created successfully as 'output.bmp'")
@@ -222,5 +237,24 @@ if __name__ == '__main__':
     print(f"Encrypted data length: {len(encrypted_data)}")
     width, height = 384, 134
     create_grayscale_bitmap(width, height, encrypted_data[:width*height], 'e-KMU-grayscale-cbc.bmp')
+    '''
 
+    # Load the grayscale BMP file
+    width, height, data = load_grayscale_bitmap('KMU-mid.bmp')
+    print(f"Loaded image: {width}x{height}, data length: {len(data)}")
+    #create_grayscale_bitmap(width, height, data, 'KMU-mid.bmp')   
 
+    encrypt_data_aes_ecb(bytes(data), b'secretkey1234500', 'KMU-mid-ecb.bin')
+    encrypt_data_aes_cbc(bytes(data), b'secretkey1234500', b'iv12345678901234', 'KMU-mid-cbc.bin')
+
+    with open('KMU-mid-ecb.bin', 'rb') as f:
+        encrypted_data = f.read()
+    print(f"Encrypted data length: {len(encrypted_data)}")
+    create_grayscale_bitmap(width, height, encrypted_data[:width*height], 'KMU-mid-ecb.bmp')
+    
+    with open('KMU-mid-cbc.bin', 'rb') as f:
+        encrypted_data = f.read()
+    print(f"Encrypted data length: {len(encrypted_data)}")
+    create_grayscale_bitmap(width, height, encrypted_data[:width*height], 'KMU-mid-cbc.bmp')
+
+    print("Done!")
