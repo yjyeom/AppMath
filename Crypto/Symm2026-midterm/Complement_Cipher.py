@@ -85,7 +85,7 @@ def CEnc_key_recovery_test():
 
     m1_list = [0xAB, 0x83, 0x3F, 0x5C, 0xD3]
     m2_list = [m ^ 0xFF for m in m1_list]
-    key = [ 0x0C, 0x0F, 0x03, 0x0A, 0x05] #하위 4비트만 쓰자 (4비트 암호키)
+    key = [ 0x0C, 0x0E, 0x03, 0x0A, 0x05] #하위 4비트만 쓰자 (4비트 암호키)
 
     for m1, m2, key in zip(m1_list, m2_list, key):
 
@@ -105,13 +105,13 @@ def CEnc_key_recovery_test():
             #print(f"{k:02X} | {c1_k:02X} | {c2_k:02X}")
             print(f"{num2bin(k, 4)} & {num2bin(c1_k, 8)} & {num2bin(c2_k, 8)}")
 
-        print("\bar c_1 = CEnc(m2, \bar k)", f"{bin(c1^0xFF)[2:].zfill(8)} = CEnc(m2, {num2bin(key^0xF, 4)})" )
+        print("bar c_1 = CEnc(m2, bar k)", f"{bin(c1^0xFF)[2:].zfill(8)} = CEnc(m2, {num2bin(key^0xF, 4)})" )
         print('\n')
 
     
 if __name__ == "__main__":
     #CEnc_test()
 
-    CEnc_key_recovery()
+    #CEnc_key_recovery()
 
     CEnc_key_recovery_test()

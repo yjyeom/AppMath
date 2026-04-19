@@ -53,7 +53,7 @@ def EL_test():
 def EL_linear_test():
  
      for idx in range(4): 
-        print(f"== Test Case {idx} ==")
+        print(f"== Test Case {idx+1} ==")
         print("Matrix A =", A[idx])
         print("Plaintext | Ciphertext")
         for pt in range(16):
@@ -82,7 +82,7 @@ def EA_test():
 def EA_affine_test():
  
      for idx in range(4): 
-        print(f"== Test Case {idx} ==")
+        print(f"== Test Case {idx+1} ==")
         print("Matrix A =", A[idx])
         print("Affine b =", num2bin(Affine_b[idx], 4))
         print("Plaintext | Ciphertext")

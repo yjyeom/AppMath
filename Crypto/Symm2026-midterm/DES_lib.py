@@ -122,6 +122,7 @@ ip_inverse_table = [
     33, 1, 41, 9, 49, 17, 57, 25
 ]
 
+# ASCII문자열을 64비트 이진수로 변환하는 함수
 def str_to_bin(user_input):
     
         # Convert the string to binary
@@ -383,6 +384,7 @@ def decryption(final_cipher):
 
 # Start test run (original ver) ===========================
 
+# 입력한 ASCII 문자열을 암호화하고 다시 복호화하는 전체 과정 테스트
 def Original_run():
     # user input (ascii string) --> binary conversion --> initial permutation --> 16 rounds of DES --> final permutation --> cipher text (ascii)
     user_input = input("Enter a string: ")
@@ -400,18 +402,25 @@ def Original_run():
     # we'll call the decryption function 
     dec = decryption(enc_to_binary)
 
-# Start===========================
 
-# 64비트 16진수를 64비트 이진수로 변환하는 함수
+# 여기까지는 DES library 파일
+#=================================    
+
+#=================================    
+# 여기부터 salt 작성 내용
+
+#--[데이터 변환용]-----------------
+# (64비트) 16진수(문자열)을 64비트 이진수(문자열)로 변환하는 함수 
 def hex_to_binary(hex_string, bits=64):
     #print('hex => ', hex_string)
     #print('int => ', int(hex_string, 16))
     binary_string = bin(int(hex_string, 16))[2:]  # Convert hex to binary and remove '0b' prefix
     return binary_string.zfill(bits)  # Pad with leading zeros to ensure it's the specified number of bits long
 
-# 64비트 이진수를 64비트 16진수로 변환하는 함수
+# 64비트 이진수(문자열)를 64비트 16진수(문자열)로 변환하는 함수
 def binary_to_hex(binary_string, bits=64):
     hex_string = hex(int(binary_string, 2))[2:]  # Convert binary to hex and remove '0x' prefix
+    hex_string = hex_string.upper()  # Convert to uppercase for standard hex representation
     return hex_string.zfill(bits // 4)  # Pad with leading zeros to ensure it's the specified number of characters long
 
 # 문자열의 s간격마다 공백을 추가하는 함수
@@ -423,20 +432,29 @@ def hex_xor(hex1, hex2, bits=32):
     # Convert hex strings to integers, perform XOR, and convert back to hex
     xor_result = int(hex1, 16) ^ int(hex2, 16)
     return hex(xor_result)[2:].zfill(bits // 4)  # Remove '0x' prefix and pad with zeros
+#---------------------------------
 
-# 라운드 함수 동작
-def round_function_step_by_step(rpt, round_key):
+
+# DES 라운드 함수 동작 (중간과정 출력)
+def round_function_step_by_step(hex_in, hex_rk):
+
+    # 입력과 라운드키를 16진수와 이진수로 출력
+    binary_in = hex_to_binary(hex_in, 32)
+    binary_rk = hex_to_binary(hex_rk, 48)
+    print("Input(hex, binary): ", hex_in, add_spaces(binary_in,8))
+    print("Round Key(hex, binary): ", hex_rk, add_spaces(binary_rk,8))
+
     # Perform expansion (32 bits to 48 bits)
-    expanded_result = [rpt[i - 1] for i in e_box_table]
+    expanded_result = [binary_in[i - 1] for i in e_box_table]
     expanded_result_str = ''.join(expanded_result)
-    print("After E: ", binary_to_hex(expanded_result_str, 48), add_spaces(expanded_result_str, 8))
+    print("(A) After E: ", binary_to_hex(expanded_result_str, 48), add_spaces(expanded_result_str, 8))
     # XOR between key and expanded result 
     xor_result_str = ''
     for i in range(48):
-        xor_result_str += str(int(expanded_result_str[i]) ^ int(round_key[i]))
+        xor_result_str += str(int(expanded_result_str[i]) ^ int(binary_rk[i]))
 
     print("After RK-XOR: ", binary_to_hex(xor_result_str, 48), add_spaces(xor_result_str, 8))
-    print("Sbox IN: ", add_spaces(xor_result_str, 6))
+    print("(B) Sbox IN: ", add_spaces(xor_result_str, 6))
 
     # Split the 48-bit string into 8 groups of 6 bits each
     six_bit_groups = [xor_result_str[i:i+6] for i in range(0, 48, 6)]
@@ -451,12 +469,12 @@ def round_function_step_by_step(rpt, round_key):
         s_box_value = s_boxes[i][row_bits][col_bits]
         s_box_substituted += format(s_box_value, '04b')
 
-    print("Sbox OUT: ", binary_to_hex(s_box_substituted, 32), add_spaces(s_box_substituted, 4))
+    print("(C) Sbox OUT : ", binary_to_hex(s_box_substituted, 32), add_spaces(s_box_substituted, 4))
     
     # Apply a P permutation to the result
     p_box_result = [s_box_substituted[i - 1] for i in p_box_table]
     
-    print("After P: ", binary_to_hex(''.join(p_box_result), 32), add_spaces(''.join(p_box_result), 8))
+    print("(OUTPUT) After P: ", binary_to_hex(''.join(p_box_result), 32), add_spaces(''.join(p_box_result), 8))
 
     return p_box_result
 
@@ -464,40 +482,60 @@ def round_function_step_by_step(rpt, round_key):
 def test_round_function():
     hex_in = "1EFC7384"
     hex_rk = "7289D2A58257"
+    correct_out = "B4D764C9"
     binary_in = hex_to_binary(hex_in, 32)
     binary_rk = hex_to_binary(hex_rk, 48)
-    print("Input(hex, binary): ", hex_in, add_spaces(binary_in,8))
-    print("Round Key(hex, binary): ", hex_rk, add_spaces(binary_rk,8))
-    round_out = round_function_step_by_step(binary_in, binary_rk)
+    print("== Test Round Function (start) ==")
+    #print("Input(hex, binary): ", hex_in, add_spaces(binary_in,8))
+    #print("Round Key(hex, binary): ", hex_rk, add_spaces(binary_rk,8))
+
+    round_out = round_function_step_by_step(hex_in, hex_rk)
+
     print("Round Function Output: ", add_spaces(''.join(round_out), 8))
     print("Round Function Output (hex): ", binary_to_hex(''.join(round_out), 32))
+    print("Correct Output (hex): ", correct_out)
+    if binary_to_hex(''.join(round_out), 32) == correct_out:
+        print("Round function output: TEST PASSED!!!")
+    print("== Test Round Function (end) ==\n\n")
 
 # 라운드함수의 차분특성과 세부동작을 확인하는 테스트 코드
 def round_ftn_difference():
+    # 0번째는 테스트 벡터로 출제에는 사용하지 않음
     hex_in_list = ["1EFC7384", "FC73841E", "73841EFC", "841EFC73", "8473FC1E" ] 
     hex_rk_list = ["7289D2A58257", "577289D2A582", "82577289D2A5", "A582577289D2", "D2A582577289"]
     for i in range(len(hex_in_list)):
-        print(f"== Test Case {i+1} ==")
-        input_hex = hex_in_list[i]
-        binary_in = hex_to_binary(input_hex, 32)
-        binary_rk = hex_to_binary(hex_rk_list[i], 48)
-        print(f"Input {i+1} (hex, binary): ", input_hex, add_spaces(binary_in,8))
-        print(f"Round Key {i+1} (hex, binary): ", hex_rk_list[i], add_spaces(binary_rk,8))
-        round_out = round_function_step_by_step(binary_in, binary_rk)
-        print(f"Round Function Output {i+1}: ", add_spaces(''.join(round_out), 8))
-        print(f"Round Function Output {i+1} (hex): ", binary_to_hex(''.join(round_out), 32))
+        print(f"== Test Case {i} ==")
+        
+        #-- Y1 = F(X1, RK) 계산 --
+        X1 = hex_in_list[i]
+        RK = hex_rk_list[i]      
+        
+        round_out = round_function_step_by_step(X1, RK)
+
+        Y1 = binary_to_hex(''.join(round_out), 32)        
+        print(f"Round Function Output {i} (hex): ", Y1)
         print()
 
+        #-- Y2 = F(X2, RK) = F(X1^Delta, RK) 계산 --
         Delta = "04000000"  # 입력의 차분
-        input_hex = hex_xor(input_hex, Delta)
-        binary_in = hex_to_binary(input_hex, 32)
-        binary_rk = hex_to_binary(hex_rk_list[i], 48)
-        print(f"Input {i+1} (hex, binary): ", input_hex, add_spaces(binary_in,8))
-        print(f"Round Key {i+1} (hex, binary): ", hex_rk_list[i], add_spaces(binary_rk,8))
-        round_out = round_function_step_by_step(binary_in, binary_rk)
-        print(f"Round Function Output {i+1}: ", add_spaces(''.join(round_out), 8))
-        print(f"Round Function Output {i+1} (hex): ", binary_to_hex(''.join(round_out), 32))
-        
+        X2 = hex_xor(X1, Delta).upper()  # X1과 Delta의 XOR 결과
+
+        round_out = round_function_step_by_step(X2, RK)
+
+        Y2 = binary_to_hex(''.join(round_out), 32)
+        print(f"Round Function Output {i} (hex): ", Y2)
+        print()
+
+        print(f"({X1}, {RK}) --[F]--> {Y1}")
+        print(f"({X2}, {RK}) --[F]--> {Y2}")
+
+        CL = X2
+        CR = Y2
+        XL = hex_xor(Y2, CR).upper()
+        XR = CL
+
+        print(f"(CL, CR) = ({CL}, {CR}) --> (XL, XR) = ({XL}, {XR})")
+
 
         print('\n')
 
@@ -513,7 +551,11 @@ if __name__ == "__main__":
     hex_recovered = binary_to_hex(binary_input)
     print("Recovered hexadecimal string: ", hex_recovered)
     '''
-    #test_round_function()
+
+    #라운드 함수의 동작을 테스트벡터로 확인
+    test_round_function()
+
+    # 문제 유형을 만든다
     round_ftn_difference()
 
 
